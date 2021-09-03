@@ -35,7 +35,7 @@ scrape_configs:
     scrape_interval: 5s
     metrics_path:  /prometheus/metrics
     static_configs:
-         - targets: ['prometheus:9090']
+         - targets: ['prometheus:9900']
 
 
   - job_name: 'cadvisor'

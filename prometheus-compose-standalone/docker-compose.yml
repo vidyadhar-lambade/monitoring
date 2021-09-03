@@ -28,9 +28,10 @@ services:
       - '--web.console.templates=/usr/share/prometheus/consoles'
       - '--web.enable-lifecycle'
       - '--web.enable-admin-api'
-      - '--web.external-url=http://localhost:9090/prometheus/'
+      - '--web.listen-address=:9900'
+      - '--web.external-url=http://localhost:9900/prometheus/'
     ports:
-      - 9090:9090
+      - 9900:9900
     networks:
       - nginx_overlay
     deploy:

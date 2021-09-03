@@ -1,0 +1,20 @@
+version: '3.4'
+
+networks: 
+  nginx_overlay:
+    external: true
+
+services:
+  webapp:
+    image: nginx:latest
+    volumes:
+      - ./nginx/html:/usr/share/nginx/html
+      - ./nginx/nginxconf:/etc/nginx/conf.d
+      - ./nginx/nginxcerts/certs:/home/certs
+    ports:
+      - "80:80"
+      - "443:443"
+    deploy:
+      mode: global
+    networks:
+      - nginx_overlay

@@ -1,0 +1,121 @@
+version: '3.7'
+
+volumes:
+    nfspromdata:
+    nfsgraphdata:
+
+networks:
+    nginx_overlay:
+       # external: true
+       driver: overlay
+       attachable: true
+
+configs:
+    grafana_config:
+        file: ./grafana/config/defaults.ini
+
+services:
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - nfspromdata:/prometheus
+      - ./prometheus/config/:/etc/prometheus/
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+      - '--web.external-url=http://localhost:9090/prometheus/'
+    ports:
+      - 9090:9090
+    networks:
+      - nginx_overlay
+    deploy:
+      placement:
+        constraints:
+          - node.role==manager
+      restart_policy:
+        condition: on-failure
+
+  grafana:
+    image: grafana/grafana:latest
+    depends_on:
+      - prometheus
+    ports:
+      - 3000:3000
+    volumes:
+      - nfsgraphdata:/var/lib/grafana
+      - ./grafana/provisioning/:/etc/grafana/provisioning/
+    configs:
+      - source: grafana_config
+        target: /usr/share/grafana/conf/defaults.ini
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=7530go*
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - nginx_overlay
+    user: "472"
+    deploy:
+      placement:
+        constraints:
+          - node.role==manager
+      restart_policy:
+        condition: on-failure
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    ports:
+      - 9093:9093
+    volumes:
+      - ./alertmanager/config:/etc/alertmanager/
+    networks:
+      - nginx_overlay
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093/alertmanager/'
+    deploy:
+      placement:
+        constraints:
+          - node.role==manager
+      restart_policy:
+        condition: on-failure
+
+  cadvisor:
+    image: google/cadvisor:latest
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - 8080:8080
+    networks:
+      - nginx_overlay
+    deploy:
+      mode: global
+      restart_policy:
+          condition: on-failure
+          
+  node-exporter:
+    image: prom/node-exporter:latest
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command: 
+      - '--path.procfs=/host/proc' 
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points'
+      - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+    ports:
+      - 9100:9100
+    networks:
+      - nginx_overlay
+    deploy:
+      mode: global
+      restart_policy:
+          condition: on-failure
